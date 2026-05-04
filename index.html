@@ -2,14 +2,16 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Comparativo de Fornecedores</title>
+<title>Comparativo com Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-  body { font-family: Arial; padding: 20px; }
-  table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-  th { background: #f2f2f2; }
-  .melhor { background-color: #c8f7c5; }
+body { font-family: Arial; padding: 20px; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+th { background: #f2f2f2; }
+.painel { margin-top: 30px; }
 </style>
 
 </head>
@@ -18,96 +20,140 @@
 <h2>Comparativo Hidráulica</h2>
 
 <label>Dólar: </label>
-<input type="number" id="dolar" value="5.2" step="0.01">
+<input type="number" id="dolar" value="5.2" step="0.01" oninput="calcularTudo()">
 
-<button onclick="adicionarLinha()">+ Fornecedor</button>
+<button onclick="adicionarItem()">+ Item</button>
+<button onclick="salvar()">💾 Salvar cenário</button>
+<button onclick="gerarGrafico()">📊 Atualizar gráfico</button>
 
-<table id="tabela">
-  <thead>
-    <tr>
-      <th>Item</th>
-      <th>Fornecedor</th>
-      <th>Tipo</th>
-      <th>Preço</th>
-      <th>Frete</th>
-      <th>Custo Final</th>
-      <th>Dif (%)</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<div id="container"></div>
+
+<div class="painel">
+  <h3>Evolução de Preço</h3>
+  <canvas id="grafico"></canvas>
+</div>
 
 <script>
 
-function adicionarLinha() {
-  let tabela = document.querySelector("#tabela tbody");
+function adicionarItem() {
+  document.getElementById("container").innerHTML += `
+    <div class="item-box">
+      <input placeholder="Nome do Item"><br><br>
+      <button onclick="adicionarLinha(this)">+ Fornecedor</button>
+      <table>
+        <tr>
+          <th>Fornecedor</th>
+          <th>Tipo</th>
+          <th>Preço</th>
+          <th>Frete</th>
+          <th>Custo</th>
+        </tr>
+        <tbody></tbody>
+      </table>
+    </div>
+  `;
+}
 
-  let linha = `
+function adicionarLinha(btn) {
+  let tbody = btn.parentElement.querySelector("tbody");
+
+  tbody.innerHTML += `
     <tr>
-      <td><input value="Registro 1/2"></td>
       <td><input></td>
       <td>
-        <select onchange="calcular()">
+        <select onchange="calcularTudo()">
           <option value="importado">Importado</option>
           <option value="nacional">Nacional</option>
         </select>
       </td>
-      <td><input type="number" class="preco" oninput="calcular()"></td>
-      <td><input type="number" class="frete" oninput="calcular()"></td>
+      <td><input type="number" class="preco" oninput="calcularTudo()"></td>
+      <td><input type="number" class="frete" oninput="calcularTudo()"></td>
       <td class="custo">-</td>
-      <td class="dif">-</td>
     </tr>
   `;
-
-  tabela.innerHTML += linha;
 }
 
-function calcular() {
+function calcularTudo() {
   let dolar = parseFloat(document.getElementById("dolar").value) || 0;
-  let imposto = 0.6;
-  let icms = 0.18;
 
-  let linhas = document.querySelectorAll("#tabela tbody tr");
-  let custos = [];
+  document.querySelectorAll(".item-box").forEach(box => {
+    box.querySelectorAll("tbody tr").forEach(linha => {
+      let tipo = linha.querySelector("select").value;
+      let preco = parseFloat(linha.querySelector(".preco").value) || 0;
+      let frete = parseFloat(linha.querySelector(".frete").value) || 0;
 
-  linhas.forEach((linha) => {
-    let tipo = linha.querySelector("select").value;
-    let preco = parseFloat(linha.querySelector(".preco").value) || 0;
-    let frete = parseFloat(linha.querySelector(".frete").value) || 0;
+      let total = tipo === "importado"
+        ? (preco * dolar) * 1.6 * 1.18 + frete
+        : preco + frete;
 
-    let total = 0;
-
-    if (tipo === "importado") {
-      let precoBRL = preco * dolar;
-      let imp = precoBRL * imposto;
-      let icmsValor = (precoBRL + imp) * icms;
-      total = precoBRL + imp + icmsValor + frete;
-    } else {
-      total = preco + frete;
-    }
-
-    linha.querySelector(".custo").innerText = total.toFixed(2);
-    custos.push(total);
-  });
-
-  let menor = Math.min(...custos);
-
-  linhas.forEach((linha) => {
-    let custo = parseFloat(linha.querySelector(".custo").innerText);
-
-    linha.classList.remove("melhor");
-
-    if (custo === menor) {
-      linha.classList.add("melhor");
-    }
-
-    let dif = ((custo - menor) / menor) * 100;
-    linha.querySelector(".dif").innerText = dif.toFixed(1) + "%";
+      linha.querySelector(".custo").innerText = total.toFixed(2);
+    });
   });
 }
 
-// inicia com 3 linhas
-for (let i = 0; i < 3; i++) adicionarLinha();
+function coletarDados() {
+  let dados = [];
+
+  document.querySelectorAll(".item-box").forEach(box => {
+    let nome = box.querySelector("input").value;
+
+    box.querySelectorAll("tbody tr").forEach(linha => {
+      dados.push({
+        item: nome,
+        custo: parseFloat(linha.querySelector(".custo").innerText) || 0
+      });
+    });
+  });
+
+  return dados;
+}
+
+function salvar() {
+  let historico = JSON.parse(localStorage.getItem("historico") || "[]");
+
+  historico.push({
+    data: new Date().toLocaleString(),
+    dados: coletarDados()
+  });
+
+  localStorage.setItem("historico", JSON.stringify(historico));
+
+  alert("Salvo!");
+}
+
+let chart;
+
+function gerarGrafico() {
+  let historico = JSON.parse(localStorage.getItem("historico") || "[]");
+
+  if (historico.length === 0) return;
+
+  let labels = historico.map(h => h.data);
+
+  let dados = historico.map(h => {
+    let soma = h.dados.reduce((acc, d) => acc + d.custo, 0);
+    return soma;
+  });
+
+  let ctx = document.getElementById("grafico").getContext("2d");
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Custo Total",
+        data: dados,
+        borderWidth: 2
+      }]
+    }
+  });
+}
+
+// inicial
+adicionarItem();
 
 </script>
 
