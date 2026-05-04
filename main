@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Comparativo de Fornecedores</title>
+</head>
+<body>
+
+<h2>Comparativo Hidráulica</h2>
+
+<label>Dólar: </label>
+<input type="number" id="dolar" value="5.2"><br><br>
+
+<table border="1">
+  <tr>
+    <th>Item</th>
+    <th>Fornecedor</th>
+    <th>Tipo</th>
+    <th>Preço</th>
+    <th>Frete</th>
+    <th>Custo Final</th>
+  </tr>
+
+  <tr>
+    <td>Registro 1/2</td>
+    <td>China XYZ</td>
+    <td>importado</td>
+    <td><input type="number" class="preco" value="2"></td>
+    <td><input type="number" class="frete" value="1.5"></td>
+    <td class="resultado">-</td>
+  </tr>
+
+</table>
+
+<button onclick="calcular()">Calcular</button>
+
+<script>
+function calcular() {
+  let dolar = parseFloat(document.getElementById("dolar").value);
+  let imposto = 0.6;
+  let icms = 0.18;
+
+  let linha = document.querySelector("tr:nth-child(2)");
+  let preco = parseFloat(linha.querySelector(".preco").value);
+  let frete = parseFloat(linha.querySelector(".frete").value);
+
+  let precoBRL = preco * dolar;
+  let imp = precoBRL * imposto;
+  let icmsValor = (precoBRL + imp) * icms;
+
+  let total = precoBRL + imp + icmsValor + frete;
+
+  linha.querySelector(".resultado").innerText = total.toFixed(2);
+}
+</script>
+
+</body>
+</html>
